@@ -30,6 +30,9 @@ PhotoLab je aplikacija za obradu slika razvijena u MATLAB-u, osmišljena da kori
 ## Sistemski zahtevi:
   - MATLAB R2021b ili noviji.
   - Image Processing Toolbox (za dodatne funkcionalnosti).
+  - BM3D biblioteku je potrebno instalirati ako je vaš MATLAB ne sadrži.
+    <br/>Biblioteku možete preuzeti na ovaj link: https://webpages.tuni.fi/foi/GCF-BM3D/BM3D.zip
+    <br/>Nakon preuzimanja biblioteke, potrebno je ekstraktovati zip fajl u folder po želji i u vašem MATLAB path-u dodati folder gde je ekstraktovan zip koji ste preuzeli.
 ## Napomena:
 PhotoLab je namenjen edukativnim i istraživačkim svrhema i možda nije optimizovan za profesionalnu upotrebu.
 
