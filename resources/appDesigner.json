@@ -1,0 +1,23 @@
+{
+  "components": [
+    {
+      "className": "DatasetManager",
+      "componentName": "DatasetManager",
+      "description": "DatasetManager is a class.",
+      "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsSAAALEgHS3X78AAABGUlEQVRIiWNsaGj4z0ACqK+vZwSp7ujouPPz509lbDrZ2dnvVlRUqIDYLAwQTUTZsHz5cjgbZDgufY2NjXCLWWAMR0cnnAbv378Pq/i3b98IOgpuAS5DcAFQMHR3d+MMIpJ8gM0BsDCmmQ9IimQGMuKA5Egm1QcMpEYyqXFALBgcqQib5TRPRcQCiuKA1bUVazn2e3c1I9V80NWRicIvq5iOwmdRU1NDKcSoDVgiIyMZaWY6AwMDEy0NBwHG9vZ2nGUKCCCXKyCgWMaJNWIrV//Bqp8FX5kCAsjlCgy0Fbeh8Kt6q8B0SOsUFPE11TmQVERMmUIuoHkc0NwCFnyFFgggF1wwAAtzdAAKc3TA+P8/Sa0W0gADAwMAacOCsonAW8UAAAAASUVORK5CYII=",
+      "category": "My Components",
+      "authorName": "hamza",
+      "authorEmail": "",
+      "version": "1.0",
+      "avatar": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAIAAAD/gAIDAAAAB3RJTUUH6QEIFhAVOv/IzQAAAP9JREFUeJzt0LENwzAAA8E4+2+nQiOo9QAqPMNBRWDkbwCC+Ou+78+BOecYY6219z7ZeYXrMNZf+f76wJsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCxQLFAsUCzz9BBEOWt9ZBwAAAABJRU5ErkJggg==",
+      "defaultPosition": [
+        1,
+        1,
+        100,
+        100
+      ]
+    }
+  ],
+  "schema": 2,
+  "MATLABRelease": "R2023b"
+}
