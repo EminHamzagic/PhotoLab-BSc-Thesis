@@ -397,11 +397,15 @@ classdef TrainingCNN < matlab.apps.AppBase
             accuracy = mean(preds == imdsTest.Labels);
             fprintf("Test Accuracy: %.2f%%\n", accuracy * 100);
 
-            % Save trained model with everything inference needs
+            % Save trained model with everything inference and evaluation need
             inputSize = netInputSize;
             architecture = app.Architecture;
+            yTrue = imdsTest.Labels;
+            yPred = preds;
+            testFiles = imdsTest.Files;
             save(savePath, 'net', 'accuracy', 'classNames', 'inputSize', ...
-                'normalization', 'architecture', 'datasetName');
+                'normalization', 'architecture', 'datasetName', ...
+                'yTrue', 'yPred', 'testFiles');
 
             result.accuracy = accuracy;
             if isfield(info, 'FinalValidationAccuracy') && ~isempty(info.FinalValidationAccuracy) ...
