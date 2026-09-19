@@ -1,12 +1,14 @@
-function prepareCIFAR100(outputDir, h)
+function prepareCIFAR100(outputDir, h, targetSize)
 % prepareCIFAR100 Download and parse CIFAR-100 (MATLAB version)
 %   Creates folder structure inside outputDir with training/testing folders.
 %   Uses fine labels (100 classes). Shows progress on waitbar if provided.
+%   targetSize = [H W] resizes every image, [] keeps the native 32x32.
 %
 % Example:
-%   prepareCIFAR100(fullfile(pwd,'datasets','CIFAR100'), h)
+%   prepareCIFAR100(fullfile(pwd,'datasets','CIFAR100_32x32'), h, [32 32])
 
     if nargin < 2, h = []; end
+    if nargin < 3, targetSize = []; end
 
     if ~exist(outputDir, 'dir')
         mkdir(outputDir);
@@ -37,22 +39,29 @@ function prepareCIFAR100(outputDir, h)
     if ~isempty(h), waitbar(0.3, h, 'Parsing training set...'); end
     trainData = load(fullfile(cifarDir, 'train.mat'));
     saveImages(trainData.data, trainData.fine_labels, ...
-        fullfile(outputDir, 'training'), labelNames, h, 0.7);
+        fullfile(outputDir, 'training'), labelNames, targetSize, h, 0.7);
 
     % Step 5: Test set
     if ~isempty(h), waitbar(0.8, h, 'Parsing test set...'); end
     testData = load(fullfile(cifarDir, 'test.mat'));
     saveImages(testData.data, testData.fine_labels, ...
-        fullfile(outputDir, 'testing'), labelNames, h, 0.95);
+        fullfile(outputDir, 'testing'), labelNames, targetSize, h, 0.95);
 
     % Step 6: Cleanup extracted MAT files
     rmdir(cifarDir, 's');
+
+    if isempty(targetSize)
+        imageSize = [32 32];
+    else
+        imageSize = targetSize(1:2);
+    end
+    writeDatasetManifest(outputDir, 'CIFAR-100', imageSize, 3);
 
     if ~isempty(h), waitbar(1, h, 'CIFAR-100 ready!'); end
 end
 
 %% Helper: Save images into folders by label
-function saveImages(data, labels, baseDir, labelNames, h, progressPoint)
+function saveImages(data, labels, baseDir, labelNames, targetSize, h, progressPoint)
     if ~exist(baseDir, 'dir')
         mkdir(baseDir);
     end
@@ -71,13 +80,16 @@ function saveImages(data, labels, baseDir, labelNames, h, progressPoint)
         g = reshape(data(i,1025:2048), [32,32])';
         b = reshape(data(i,2049:3072), [32,32])';
         img = cat(3, r, g, b);
+        if ~isempty(targetSize)
+            img = imresize(img, targetSize(1:2));
+        end
 
         lbl = labels(i) + 1; % shift 0–99 -> 1–100
         imwrite(img, fullfile(baseDir, sprintf('%03d_%s', lbl, labelNames{lbl}), ...
             sprintf('%05d.png', i)));
     end
 
-    if nargin >= 6 && ~isempty(h)
+    if nargin >= 7 && ~isempty(h)
         waitbar(progressPoint, h);
     end
 end
