@@ -3,7 +3,6 @@ classdef cnn_Menu < matlab.apps.AppBase
     % Properties that correspond to app components
     properties (Access = public)
         UIFigure                      matlab.ui.Figure
-        SemantickasegmentacijaButton  matlab.ui.control.Button
         UvoduCNNButton                matlab.ui.control.Button
         EvaluacijametrikaButton       matlab.ui.control.Button
         KlasifikacijaslikaButton      matlab.ui.control.Button
@@ -128,28 +127,6 @@ classdef cnn_Menu < matlab.apps.AppBase
         function UvoduCNNButtonPushed(app, event)
             CNNIntroductionApp();
         end
-
-        % Button pushed function: SemantickasegmentacijaButton
-        function SemantickasegmentacijaButtonPushed(app, event)
-        
-         try
-        % Napravi instancu SemanticSegmentationApp
-        semanticApp = SemanticSegmentationApp();
-
-        % Ako app ima UIFigure, učini ga vidljivim
-        if isprop(semanticApp, 'UIFigure') && isvalid(semanticApp.UIFigure)
-            semanticApp.UIFigure.Visible = 'on';
-        end
-
-        % Opcionalno: prosledi dataset ili druge podatke
-        if ~isempty(app.Dataset)
-            semanticApp.UIFigure.UserData.Dataset = app.Dataset;
-            semanticApp.UIFigure.UserData.DatasetDimensions = app.DatasetDimensions;
-        end
-    catch ME
-        uialert(app.UIFigure, sprintf('Ne mogu da otvorim SemanticSegmentationApp:\n%s', ME.message), 'Greška');
-    end
-        end
     end
 
     % Component initialization
@@ -247,12 +224,6 @@ classdef cnn_Menu < matlab.apps.AppBase
             app.UvoduCNNButton.ButtonPushedFcn = createCallbackFcn(app, @UvoduCNNButtonPushed, true);
             app.UvoduCNNButton.Position = [852 38 159 41];
             app.UvoduCNNButton.Text = 'Uvod u CNN';
-
-            % Create SemantickasegmentacijaButton
-            app.SemantickasegmentacijaButton = uibutton(app.UIFigure, 'push');
-            app.SemantickasegmentacijaButton.ButtonPushedFcn = createCallbackFcn(app, @SemantickasegmentacijaButtonPushed, true);
-            app.SemantickasegmentacijaButton.Position = [26 108 157 33];
-            app.SemantickasegmentacijaButton.Text = 'Semanticka segmentacija';
 
             % Show the figure after all components are created
             app.UIFigure.Visible = 'on';
