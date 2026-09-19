@@ -1,12 +1,16 @@
-function prepareFashionMNIST(outputDir, h)
+function prepareFashionMNIST(outputDir, h, targetSize)
 % prepareFashionMNIST Download and parse Fashion-MNIST dataset
 %   Creates folder structure inside outputDir with training/testing folders.
+%   Class folders are named 01_T-shirt ... 10_Ankle-boot so that
+%   imageDatastore sorts them in label order.
+%   targetSize = [H W] resizes every image, [] keeps the native 28x28.
 %   Shows progress on waitbar if provided.
 %
 % Example:
-%   prepareFashionMNIST(fullfile(pwd,'datasets','FashionMNIST'), h)
+%   prepareFashionMNIST(fullfile(pwd,'datasets','FashionMNIST_28x28'), h, [28 28])
 
     if nargin < 2, h = []; end
+    if nargin < 3, targetSize = []; end
 
     if ~exist(outputDir, 'dir')
         mkdir(outputDir);
@@ -50,15 +54,22 @@ function prepareFashionMNIST(outputDir, h)
 
     % Step 3: Save to PNG structure
     if ~isempty(h), waitbar(0.8, h, 'Saving training images...'); end
-    saveImages(trainImages, trainLabels, fullfile(outputDir, 'training'));
+    saveImages(trainImages, trainLabels, fullfile(outputDir, 'training'), targetSize);
     if ~isempty(h), waitbar(0.95, h, 'Saving testing images...'); end
-    saveImages(testImages,  testLabels,  fullfile(outputDir, 'testing'));
+    saveImages(testImages,  testLabels,  fullfile(outputDir, 'testing'), targetSize);
 
     % Step 4: Clean raw .ubyte files
     delete(fullfile(outputDir,'train-images-idx3-ubyte'));
     delete(fullfile(outputDir,'train-labels-idx1-ubyte'));
     delete(fullfile(outputDir,'t10k-images-idx3-ubyte'));
     delete(fullfile(outputDir,'t10k-labels-idx1-ubyte'));
+
+    if isempty(targetSize)
+        imageSize = [28 28];
+    else
+        imageSize = targetSize(1:2);
+    end
+    writeDatasetManifest(outputDir, 'Fashion-MNIST', imageSize, 1);
 
     if ~isempty(h), waitbar(1, h, 'Fashion-MNIST ready!'); end
 end
@@ -88,20 +99,27 @@ function labels = loadIDXLabels(filename)
 end
 
 %% Helper: Save images into folders by label
-function saveImages(images, labels, baseDir)
+% Folder names are zero-padded so string sorting matches label order
+% (plain 1..10 would sort as 1, 10, 2, ... and shift every class index).
+function saveImages(images, labels, baseDir, targetSize)
     if ~exist(baseDir, 'dir')
         mkdir(baseDir);
     end
-    numClasses = 10;
-    for c = 0:numClasses-1
-        classDir = fullfile(baseDir, num2str(c+1));
-        if ~exist(classDir, 'dir')
-            mkdir(classDir);
+    classNames = {'T-shirt', 'Trouser', 'Pullover', 'Dress', 'Coat', ...
+                  'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle-boot'};
+    classDirs = cell(1, numel(classNames));
+    for c = 1:numel(classNames)
+        classDirs{c} = fullfile(baseDir, sprintf('%02d_%s', c, classNames{c}));
+        if ~exist(classDirs{c}, 'dir')
+            mkdir(classDirs{c});
         end
     end
     for i = 1:size(images,3)
         img = uint8(images(:,:,i));
+        if ~isempty(targetSize)
+            img = imresize(img, targetSize(1:2));
+        end
         lbl = labels(i) + 1; % shift 0–9 -> 1–10
-        imwrite(img, fullfile(baseDir, num2str(lbl), sprintf('%05d.png', i)));
+        imwrite(img, fullfile(classDirs{lbl}, sprintf('%05d.png', i)));
     end
 end

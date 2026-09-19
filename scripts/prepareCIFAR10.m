@@ -1,12 +1,15 @@
-function prepareCIFAR10(outputDir, h)
+function prepareCIFAR10(outputDir, h, targetSize)
 % prepareCIFAR10 Download and parse CIFAR-10 (MATLAB version)
-%   Creates folder structure inside outputDir with training/testing folders.
+%   Creates folder structure inside outputDir with training/testing folders
+%   named 01_airplane ... 10_truck.
+%   targetSize = [H W] resizes every image, [] keeps the native 32x32.
 %   Shows progress on waitbar if provided.
 %
 % Example:
-%   prepareCIFAR10(fullfile(pwd,'datasets','CIFAR10'), h)
+%   prepareCIFAR10(fullfile(pwd,'datasets','CIFAR10_32x32'), h, [32 32])
 
     if nargin < 2, h = []; end
+    if nargin < 3, targetSize = []; end
 
     if ~exist(outputDir, 'dir')
         mkdir(outputDir);
@@ -37,30 +40,39 @@ function prepareCIFAR10(outputDir, h)
     if ~isempty(h), waitbar(0.3, h, 'Parsing training batches...'); end
     for b = 1:5
         batch = load(fullfile(cifarDir, sprintf('data_batch_%d.mat', b)));
+        % Offset file names per batch, otherwise batch 2 overwrites batch 1
         saveImages(batch.data, batch.labels, ...
-            fullfile(outputDir, 'training'), labelNames, h, (0.3+b*0.1));
+            fullfile(outputDir, 'training'), labelNames, targetSize, (b-1)*10000, h, (0.3+b*0.1));
     end
 
     % Step 5: Test batch
     if ~isempty(h), waitbar(0.85, h, 'Parsing test batch...'); end
     testBatch = load(fullfile(cifarDir, 'test_batch.mat'));
     saveImages(testBatch.data, testBatch.labels, ...
-        fullfile(outputDir, 'testing'), labelNames, h, 0.95);
+        fullfile(outputDir, 'testing'), labelNames, targetSize, 0, h, 0.95);
 
     % Step 6: Cleanup extracted MAT files
     rmdir(cifarDir, 's');
+
+    if isempty(targetSize)
+        imageSize = [32 32];
+    else
+        imageSize = targetSize(1:2);
+    end
+    writeDatasetManifest(outputDir, 'CIFAR-10', imageSize, 3);
 
     if ~isempty(h), waitbar(1, h, 'CIFAR-10 ready!'); end
 end
 
 %% Helper: Save images into folders by label
-function saveImages(data, labels, baseDir, labelNames, h, progressPoint)
+% Folder names are zero-padded (%02d) so string sorting matches label order.
+function saveImages(data, labels, baseDir, labelNames, targetSize, fileOffset, h, progressPoint)
     if ~exist(baseDir, 'dir')
         mkdir(baseDir);
     end
     numClasses = numel(labelNames);
     for c = 1:numClasses
-        classDir = fullfile(baseDir, sprintf('%d_%s', c, labelNames{c}));
+        classDir = fullfile(baseDir, sprintf('%02d_%s', c, labelNames{c}));
         if ~exist(classDir, 'dir')
             mkdir(classDir);
         end
@@ -73,13 +85,16 @@ function saveImages(data, labels, baseDir, labelNames, h, progressPoint)
         g = reshape(data(i,1025:2048), [32,32])';
         b = reshape(data(i,2049:3072), [32,32])';
         img = cat(3, r, g, b);
+        if ~isempty(targetSize)
+            img = imresize(img, targetSize(1:2));
+        end
 
         lbl = labels(i) + 1; % shift 0–9 -> 1–10
-        imwrite(img, fullfile(baseDir, sprintf('%d_%s', lbl, labelNames{lbl}), ...
-            sprintf('%05d.png', i)));
+        imwrite(img, fullfile(baseDir, sprintf('%02d_%s', lbl, labelNames{lbl}), ...
+            sprintf('%05d.png', fileOffset + i)));
     end
 
-    if nargin >= 6 && ~isempty(h)
+    if nargin >= 8 && ~isempty(h)
         waitbar(progressPoint, h);
     end
 end
