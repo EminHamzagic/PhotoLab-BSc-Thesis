@@ -60,6 +60,46 @@ PhotoLab also allows training and using **Convolutional Neural Networks (CNNs)**
 
 ---
 
+### 🧠 Supported Architectures and Why
+
+PhotoLab's datasets (MNIST, Fashion-MNIST, CIFAR-10, CIFAR-100) are small, low-resolution
+images (28×28 and 32×32) with 10–100 classes. The offered architectures were chosen to fit
+that setting:
+
+| Architecture | Mode | Why it fits low-resolution datasets |
+|---|---|---|
+| **LeNet-5** | Trained from scratch | Designed for 28×28 digit images; the natural baseline and fast on CPU. |
+| **AlexNet (CIFAR-scale)** | Trained from scratch | Five conv + three FC layers sized for 32×32×3 color images: enough capacity for CIFAR while still trainable from scratch on a CPU. |
+| **ResNet-18** | Transfer learning | The shallowest residual network; skip connections prevent degradation, and it is the cheapest ResNet to fine-tune. |
+| **MobileNet-v2** | Transfer learning | Depthwise-separable convolutions give good accuracy at a very low FLOP count. |
+| **SqueezeNet** | Transfer learning | Only ~1.2M parameters; the fastest pretrained option. |
+
+The pretrained networks need 224×224×3 (SqueezeNet: 227×227×3) input. Training resizes the images
+and converts grayscale to RGB on the fly, so any dataset works with any architecture. The pretrained
+networks keep their own ImageNet input normalization; the normalization chosen in the dataset window
+applies to LeNet and AlexNet.
+
+Pretrained networks require the corresponding free Add-Ons (Home → Add-Ons → Get Add-Ons):
+*Deep Learning Toolbox Model for ResNet-18 Network*, *… for MobileNet-v2 Network*, *… for SqueezeNet Network*.
+
+**Architectures that were dropped:**
+
+* **VGG-16 / VGG-19** – ~138M parameters and a hard 224×224 input requirement; far too heavy for 32×32 data.
+* **ResNet-50** – about 4× the compute of ResNet-18 for little gain on low-resolution images.
+* **Inception-v3** – needs 299×299 input, i.e. more than 9× upsampling of a 32×32 image.
+* **EfficientNet** – its compound scaling is tuned for high-resolution inputs.
+* **YOLOv4** – an object detector, not a classifier; it does not fit a folder-per-class classification workflow.
+
+### 🗂️ Datasets and Preprocessing
+
+* The image size chosen in the dataset window is applied **at download time**, and every size gets its
+  own folder (e.g. `datasets/MNIST_28x28`, `datasets/MNIST_32x32`).
+* Normalization (`None`, `MinMax`, `Mean-Std`) is stored in the network's input layer. The saved model
+  therefore applies exactly the same transform when classifying new images.
+* Each prepared dataset contains a `photolab_dataset.mat` manifest (image size, channels, class names).
+
+---
+
 ## 🚀 How to Run the Application
 
 1. Open MATLAB.
@@ -76,7 +116,7 @@ PhotoLab also allows training and using **Convolutional Neural Networks (CNNs)**
 
 ### General Requirements
 
-* **MATLAB R2021b or later** (recommended).
+* **MATLAB R2023b or later** (recommended).
 * **Image Processing Toolbox** (required for many image operations).
 * **BM3D library** (if not included in your MATLAB installation).
 
@@ -84,7 +124,13 @@ PhotoLab also allows training and using **Convolutional Neural Networks (CNNs)**
 After downloading:
 
 1. Extract the ZIP file to a folder of your choice.
-2. Add that folder to the **MATLAB path**.
+2. Add that folder to the **MATLAB path**. If you skip this, PhotoLab looks for a `BM3D` folder on your
+   Desktop (and next to the repository) the first time you use the BM3D filter, and asks you to pick the
+   folder if it finds none.
+
+This is the original Tampere release (`[PSNR, y_est] = BM3D(y, z, sigma, ...)`, grayscale only, with
+`CBM3D` for RGB, `sigma` on the 0–255 scale). Two demo images for trying the denoising filters are in
+`+SampleImages/` (`demo_bricks_256.png`, `demo_gradient_256.png`).
 
 ---
 
@@ -93,12 +139,15 @@ After downloading:
 If you want to train or use CNN models inside PhotoLab, you will need:
 
 * **Deep Learning Toolbox** (essential for defining, training, and evaluating CNN architectures).
-* **Parallel Computing Toolbox** (optional, but recommended for faster training using CPU parallelization).
-* **GPU Coder Toolbox** (optional, for GPU acceleration and deployment).
+* **Parallel Computing Toolbox** (required for GPU training).
 * **Supported NVIDIA GPU** (optional but highly recommended for faster training):
 
-  * CUDA-enabled NVIDIA GPU
-  * Properly configured **CUDA Toolkit** and **cuDNN** libraries installed.
+  * CUDA-enabled NVIDIA GPU with compute capability **5.0 or higher** (R2023b).
+  * An up-to-date NVIDIA driver (MATLAB ships its own CUDA/cuDNN libraries).
+
+The training window detects the GPU on startup. The **Koristi GPU** option is enabled only when a
+usable GPU is found, and it shows the GPU model and compute capability. AMD, Intel and Apple Silicon
+GPUs are not supported by `trainNetwork`; on those machines training runs on the CPU.
 
 > ⚡ Training CNNs on CPU can be **very slow**. For best performance, use a GPU with CUDA support.
 
