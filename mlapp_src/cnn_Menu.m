@@ -34,6 +34,19 @@ classdef cnn_Menu < matlab.apps.AppBase
     % Callbacks that handle component events
     methods (Access = private)
 
+        % Code that executes after component creation
+        function startupFcn(app)
+            % Helper folders next to this app, so it also works when opened directly
+            appDir = fileparts(which('cnn_Menu'));
+            folders = {'cnn_ui', 'options_ui', 'scripts', 'metrics', 'utils', 'generative'};
+            for k = 1:numel(folders)
+                folder = fullfile(appDir, folders{k});
+                if isfolder(folder)
+                    addpath(folder);
+                end
+            end
+        end
+
         % Button pushed function: IzaberiarhitekturuButton
         function IzaberiarhitekturuButtonPushed(app, event)
             architectures = CNNArchitectures();
@@ -241,6 +254,9 @@ classdef cnn_Menu < matlab.apps.AppBase
 
             % Register the app with App Designer
             registerApp(app, app.UIFigure)
+
+            % Execute the startup function
+            runStartupFcn(app, @startupFcn)
 
             if nargout == 0
                 clear app
