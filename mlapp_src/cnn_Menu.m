@@ -19,6 +19,9 @@ classdef cnn_Menu < matlab.apps.AppBase
         ArchLabel                     matlab.ui.control.Label
         ArhitekturaLabel              matlab.ui.control.Label
         DobrodoliuCNNanalizuslikaPhotoLabaLabel  matlab.ui.control.Label
+        DescriptionLabel              matlab.ui.control.Label
+        AnalysisPanel                 matlab.ui.container.Panel
+        GenerativePanel               matlab.ui.container.Panel
     end
 
     
@@ -38,6 +41,7 @@ classdef cnn_Menu < matlab.apps.AppBase
 
         % Code that executes after component creation
         function startupFcn(app)
+            movegui(app.UIFigure, 'center');
             % Helper folders next to this app, so it also works when opened directly
             appDir = fileparts(which('cnn_Menu'));
             folders = {'cnn_ui', 'options_ui', 'scripts', 'metrics', 'utils', 'generative'};
@@ -170,105 +174,153 @@ classdef cnn_Menu < matlab.apps.AppBase
 
             % Create UIFigure and hide until all components are created
             app.UIFigure = uifigure('Visible', 'off');
-            app.UIFigure.Position = [100 100 1040 681];
-            app.UIFigure.Name = 'MATLAB App';
+            app.UIFigure.Position = [100 100 1200 760];
+            app.UIFigure.Name = 'CNN analiza slika';
 
             % Create DobrodoliuCNNanalizuslikaPhotoLabaLabel
             app.DobrodoliuCNNanalizuslikaPhotoLabaLabel = uilabel(app.UIFigure);
-            app.DobrodoliuCNNanalizuslikaPhotoLabaLabel.FontSize = 24;
-            app.DobrodoliuCNNanalizuslikaPhotoLabaLabel.Position = [26 621 482 32];
+            app.DobrodoliuCNNanalizuslikaPhotoLabaLabel.FontSize = 22;
+            app.DobrodoliuCNNanalizuslikaPhotoLabaLabel.FontWeight = 'bold';
+            app.DobrodoliuCNNanalizuslikaPhotoLabaLabel.Position = [24 704 800 32];
             app.DobrodoliuCNNanalizuslikaPhotoLabaLabel.Text = 'Dobro došli u CNN analizu slika PhotoLab-a';
 
-            % Create ArhitekturaLabel
-            app.ArhitekturaLabel = uilabel(app.UIFigure);
-            app.ArhitekturaLabel.FontSize = 18;
-            app.ArhitekturaLabel.Position = [26 577 97 23];
-            app.ArhitekturaLabel.Text = 'Arhitektura:';
+            % Create DescriptionLabel
+            app.DescriptionLabel = uilabel(app.UIFigure);
+            app.DescriptionLabel.FontSize = 13;
+            app.DescriptionLabel.WordWrap = 'on';
+            app.DescriptionLabel.Position = [24 668 1152 24];
+            app.DescriptionLabel.Text = 'Izaberite arhitekturu i dataset pa pokrenite treniranje CNN modela, ili otvorite ostale alate.';
 
-            % Create ArchLabel
-            app.ArchLabel = uilabel(app.UIFigure);
-            app.ArchLabel.FontSize = 18;
-            app.ArchLabel.Position = [137 577 371 23];
-            app.ArchLabel.Text = '';
-
-            % Create DatasetLabel
-            app.DatasetLabel = uilabel(app.UIFigure);
-            app.DatasetLabel.FontSize = 18;
-            app.DatasetLabel.Position = [26 541 72 23];
-            app.DatasetLabel.Text = 'Dataset:';
-
-            % Create DataSetLabelInput
-            app.DataSetLabelInput = uilabel(app.UIFigure);
-            app.DataSetLabelInput.FontSize = 18;
-            app.DataSetLabelInput.Position = [137 541 371 23];
-            app.DataSetLabelInput.Text = '';
-
-            % Create NormalizacijaLabel
-            app.NormalizacijaLabel = uilabel(app.UIFigure);
-            app.NormalizacijaLabel.FontSize = 18;
-            app.NormalizacijaLabel.Position = [26 505 120 23];
-            app.NormalizacijaLabel.Text = 'Normalizacija:';
-
-            % Create NormLabelInput
-            app.NormLabelInput = uilabel(app.UIFigure);
-            app.NormLabelInput.FontSize = 18;
-            app.NormLabelInput.Position = [152 505 356 23];
-            app.NormLabelInput.Text = '';
+            %% Treniranje CNN modela
 
             % Create TreniranjeCNNmodelaPanel
             app.TreniranjeCNNmodelaPanel = uipanel(app.UIFigure);
             app.TreniranjeCNNmodelaPanel.Title = 'Treniranje CNN modela';
-            app.TreniranjeCNNmodelaPanel.Position = [26 276 368 207];
+            app.TreniranjeCNNmodelaPanel.FontSize = 14;
+            app.TreniranjeCNNmodelaPanel.FontWeight = 'bold';
+            app.TreniranjeCNNmodelaPanel.Position = [24 408 1152 244];
+
+            % Create ArhitekturaLabel
+            app.ArhitekturaLabel = uilabel(app.TreniranjeCNNmodelaPanel);
+            app.ArhitekturaLabel.FontSize = 13;
+            app.ArhitekturaLabel.Position = [16 150 120 24];
+            app.ArhitekturaLabel.Text = 'Arhitektura:';
+
+            % Create ArchLabel
+            app.ArchLabel = uilabel(app.TreniranjeCNNmodelaPanel);
+            app.ArchLabel.FontSize = 13;
+            app.ArchLabel.Position = [140 150 480 24];
+            app.ArchLabel.Text = '';
+
+            % Create DatasetLabel
+            app.DatasetLabel = uilabel(app.TreniranjeCNNmodelaPanel);
+            app.DatasetLabel.FontSize = 13;
+            app.DatasetLabel.Position = [16 114 120 24];
+            app.DatasetLabel.Text = 'Dataset:';
+
+            % Create DataSetLabelInput
+            app.DataSetLabelInput = uilabel(app.TreniranjeCNNmodelaPanel);
+            app.DataSetLabelInput.FontSize = 13;
+            app.DataSetLabelInput.Position = [140 114 480 24];
+            app.DataSetLabelInput.Text = '';
+
+            % Create NormalizacijaLabel
+            app.NormalizacijaLabel = uilabel(app.TreniranjeCNNmodelaPanel);
+            app.NormalizacijaLabel.FontSize = 13;
+            app.NormalizacijaLabel.Position = [16 78 120 24];
+            app.NormalizacijaLabel.Text = 'Normalizacija:';
+
+            % Create NormLabelInput
+            app.NormLabelInput = uilabel(app.TreniranjeCNNmodelaPanel);
+            app.NormLabelInput.FontSize = 13;
+            app.NormLabelInput.Position = [140 78 480 24];
+            app.NormLabelInput.Text = '';
 
             % Create IzaberiarhitekturuButton
             app.IzaberiarhitekturuButton = uibutton(app.TreniranjeCNNmodelaPanel, 'push');
             app.IzaberiarhitekturuButton.ButtonPushedFcn = createCallbackFcn(app, @IzaberiarhitekturuButtonPushed, true);
-            app.IzaberiarhitekturuButton.FontSize = 14;
-            app.IzaberiarhitekturuButton.Position = [11 114 160 42];
+            app.IzaberiarhitekturuButton.FontSize = 12;
+            app.IzaberiarhitekturuButton.WordWrap = 'on';
+            app.IzaberiarhitekturuButton.Position = [640 150 240 48];
             app.IzaberiarhitekturuButton.Text = 'Izaberi arhitekturu';
 
             % Create OdabirdatasetaButton
             app.OdabirdatasetaButton = uibutton(app.TreniranjeCNNmodelaPanel, 'push');
             app.OdabirdatasetaButton.ButtonPushedFcn = createCallbackFcn(app, @OdabirdatasetaButtonPushed, true);
-            app.OdabirdatasetaButton.FontSize = 14;
-            app.OdabirdatasetaButton.Position = [189 114 160 42];
+            app.OdabirdatasetaButton.FontSize = 12;
+            app.OdabirdatasetaButton.WordWrap = 'on';
+            app.OdabirdatasetaButton.Position = [896 150 240 48];
             app.OdabirdatasetaButton.Text = 'Odabir dataset-a';
 
             % Create TreniranjeCNNButton
             app.TreniranjeCNNButton = uibutton(app.TreniranjeCNNmodelaPanel, 'push');
             app.TreniranjeCNNButton.ButtonPushedFcn = createCallbackFcn(app, @TreniranjeCNNButtonPushed, true);
-            app.TreniranjeCNNButton.Position = [11 36 160 42];
+            app.TreniranjeCNNButton.BackgroundColor = [0.20 0.45 0.75];
+            app.TreniranjeCNNButton.FontColor = [1 1 1];
+            app.TreniranjeCNNButton.FontSize = 13;
+            app.TreniranjeCNNButton.FontWeight = 'bold';
+            app.TreniranjeCNNButton.Position = [936 60 200 44];
             app.TreniranjeCNNButton.Text = 'Treniranje CNN';
 
+            %% Klasifikacija i evaluacija
+
+            % Create AnalysisPanel
+            app.AnalysisPanel = uipanel(app.UIFigure);
+            app.AnalysisPanel.Title = 'Klasifikacija i evaluacija';
+            app.AnalysisPanel.FontSize = 14;
+            app.AnalysisPanel.FontWeight = 'bold';
+            app.AnalysisPanel.Position = [24 268 1152 124];
+
             % Create KlasifikacijaslikaButton
-            app.KlasifikacijaslikaButton = uibutton(app.UIFigure, 'push');
+            app.KlasifikacijaslikaButton = uibutton(app.AnalysisPanel, 'push');
             app.KlasifikacijaslikaButton.ButtonPushedFcn = createCallbackFcn(app, @KlasifikacijaslikaButtonPushed, true);
-            app.KlasifikacijaslikaButton.Position = [26 223 159 41];
+            app.KlasifikacijaslikaButton.FontSize = 12;
+            app.KlasifikacijaslikaButton.WordWrap = 'on';
+            app.KlasifikacijaslikaButton.Position = [16 24 240 48];
             app.KlasifikacijaslikaButton.Text = 'Klasifikacija slika';
 
             % Create EvaluacijametrikaButton
-            app.EvaluacijametrikaButton = uibutton(app.UIFigure, 'push');
+            app.EvaluacijametrikaButton = uibutton(app.AnalysisPanel, 'push');
             app.EvaluacijametrikaButton.ButtonPushedFcn = createCallbackFcn(app, @EvaluacijametrikaButtonPushed, true);
-            app.EvaluacijametrikaButton.Position = [26 159 159 39];
+            app.EvaluacijametrikaButton.FontSize = 12;
+            app.EvaluacijametrikaButton.WordWrap = 'on';
+            app.EvaluacijametrikaButton.Position = [272 24 240 48];
             app.EvaluacijametrikaButton.Text = 'Evaluacija metrika';
+
+            %% Generativni modeli
+
+            % Create GenerativePanel
+            app.GenerativePanel = uipanel(app.UIFigure);
+            app.GenerativePanel.Title = 'Generativni modeli';
+            app.GenerativePanel.FontSize = 14;
+            app.GenerativePanel.FontWeight = 'bold';
+            app.GenerativePanel.Position = [24 128 1152 124];
+
+            % Create TreniranjegenerativnogmodelaButton
+            app.TreniranjegenerativnogmodelaButton = uibutton(app.GenerativePanel, 'push');
+            app.TreniranjegenerativnogmodelaButton.ButtonPushedFcn = createCallbackFcn(app, @TreniranjegenerativnogmodelaButtonPushed, true);
+            app.TreniranjegenerativnogmodelaButton.FontSize = 12;
+            app.TreniranjegenerativnogmodelaButton.WordWrap = 'on';
+            app.TreniranjegenerativnogmodelaButton.Position = [16 24 240 48];
+            app.TreniranjegenerativnogmodelaButton.Text = 'Treniranje generativnog modela';
+
+            % Create GenerisanjeslikaButton
+            app.GenerisanjeslikaButton = uibutton(app.GenerativePanel, 'push');
+            app.GenerisanjeslikaButton.ButtonPushedFcn = createCallbackFcn(app, @GenerisanjeslikaButtonPushed, true);
+            app.GenerisanjeslikaButton.FontSize = 12;
+            app.GenerisanjeslikaButton.WordWrap = 'on';
+            app.GenerisanjeslikaButton.Position = [272 24 240 48];
+            app.GenerisanjeslikaButton.Text = 'Generisanje slika';
+
+            %% Uvod
 
             % Create UvoduCNNButton
             app.UvoduCNNButton = uibutton(app.UIFigure, 'push');
             app.UvoduCNNButton.ButtonPushedFcn = createCallbackFcn(app, @UvoduCNNButtonPushed, true);
-            app.UvoduCNNButton.Position = [852 38 159 41];
+            app.UvoduCNNButton.FontSize = 12;
+            app.UvoduCNNButton.WordWrap = 'on';
+            app.UvoduCNNButton.Position = [936 40 240 48];
             app.UvoduCNNButton.Text = 'Uvod u CNN';
-
-            % Create TreniranjegenerativnogmodelaButton
-            app.TreniranjegenerativnogmodelaButton = uibutton(app.UIFigure, 'push');
-            app.TreniranjegenerativnogmodelaButton.ButtonPushedFcn = createCallbackFcn(app, @TreniranjegenerativnogmodelaButtonPushed, true);
-            app.TreniranjegenerativnogmodelaButton.Position = [26 104 240 41];
-            app.TreniranjegenerativnogmodelaButton.Text = 'Treniranje generativnog modela';
-
-            % Create GenerisanjeslikaButton
-            app.GenerisanjeslikaButton = uibutton(app.UIFigure, 'push');
-            app.GenerisanjeslikaButton.ButtonPushedFcn = createCallbackFcn(app, @GenerisanjeslikaButtonPushed, true);
-            app.GenerisanjeslikaButton.Position = [26 48 240 41];
-            app.GenerisanjeslikaButton.Text = 'Generisanje slika';
 
             % Show the figure after all components are created
             app.UIFigure.Visible = 'on';
