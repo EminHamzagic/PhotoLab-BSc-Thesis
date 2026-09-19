@@ -3,6 +3,8 @@ classdef cnn_Menu < matlab.apps.AppBase
     % Properties that correspond to app components
     properties (Access = public)
         UIFigure                      matlab.ui.Figure
+        GenerisanjeslikaButton        matlab.ui.control.Button
+        TreniranjegenerativnogmodelaButton  matlab.ui.control.Button
         UvoduCNNButton                matlab.ui.control.Button
         EvaluacijametrikaButton       matlab.ui.control.Button
         KlasifikacijaslikaButton      matlab.ui.control.Button
@@ -140,6 +142,24 @@ classdef cnn_Menu < matlab.apps.AppBase
         function UvoduCNNButtonPushed(app, event)
             CNNIntroductionApp();
         end
+
+        % Button pushed function: TreniranjegenerativnogmodelaButton
+        function TreniranjegenerativnogmodelaButtonPushed(app, event)
+            try
+                ImageGeneratingModelTraining();
+            catch ME
+                uialert(app.UIFigure, sprintf('Ne mogu da otvorim ImageGeneratingModelTraining:\n%s', ME.message), 'Greška');
+            end
+        end
+
+        % Button pushed function: GenerisanjeslikaButton
+        function GenerisanjeslikaButtonPushed(app, event)
+            try
+                ImageGeneratingFromModel();
+            catch ME
+                uialert(app.UIFigure, sprintf('Ne mogu da otvorim ImageGeneratingFromModel:\n%s', ME.message), 'Greška');
+            end
+        end
     end
 
     % Component initialization
@@ -237,6 +257,18 @@ classdef cnn_Menu < matlab.apps.AppBase
             app.UvoduCNNButton.ButtonPushedFcn = createCallbackFcn(app, @UvoduCNNButtonPushed, true);
             app.UvoduCNNButton.Position = [852 38 159 41];
             app.UvoduCNNButton.Text = 'Uvod u CNN';
+
+            % Create TreniranjegenerativnogmodelaButton
+            app.TreniranjegenerativnogmodelaButton = uibutton(app.UIFigure, 'push');
+            app.TreniranjegenerativnogmodelaButton.ButtonPushedFcn = createCallbackFcn(app, @TreniranjegenerativnogmodelaButtonPushed, true);
+            app.TreniranjegenerativnogmodelaButton.Position = [26 104 240 41];
+            app.TreniranjegenerativnogmodelaButton.Text = 'Treniranje generativnog modela';
+
+            % Create GenerisanjeslikaButton
+            app.GenerisanjeslikaButton = uibutton(app.UIFigure, 'push');
+            app.GenerisanjeslikaButton.ButtonPushedFcn = createCallbackFcn(app, @GenerisanjeslikaButtonPushed, true);
+            app.GenerisanjeslikaButton.Position = [26 48 240 41];
+            app.GenerisanjeslikaButton.Text = 'Generisanje slika';
 
             % Show the figure after all components are created
             app.UIFigure.Visible = 'on';
