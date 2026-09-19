@@ -87,31 +87,12 @@ classdef TrainingCNN < matlab.apps.AppBase
             app.ArchValueLabel.Text = app.Architecture;
             app.DatasetValueLabel.Text = datasetName;
 
-            inputText = strjoin(string(dimensions), 'x');
-            pretrainedSize = getPretrainedInputSize(app, app.Architecture);
-            if isempty(pretrainedSize)
-                app.InputValueLabel.Text = inputText;
-                app.NormValueLabel.Text = app.Normalization;
-            else
-                app.InputValueLabel.Text = inputText + " → " + strjoin(string(pretrainedSize), 'x');
-                app.NormValueLabel.Text = 'ImageNet (pretrenirana mreža)';
-            end
+            app.InputValueLabel.Text = strjoin(string(dimensions), 'x');
+            app.NormValueLabel.Text = app.Normalization;
         end
     end
 
     methods (Access = private)
-
-        function sz = getPretrainedInputSize(~, archName)
-            % Input size the pretrained networks demand, [] for from-scratch nets
-            switch archName
-                case {'ResNet-18', 'MobileNet-v2'}
-                    sz = [224 224 3];
-                case 'SqueezeNet'
-                    sz = [227 227 3];
-                otherwise
-                    sz = [];
-            end
-        end
 
         function layerNorm = getInputNormalization(~, normalization)
             % Map the DatasetManagerApp choice to imageInputLayer 'Normalization'
@@ -125,25 +106,9 @@ classdef TrainingCNN < matlab.apps.AppBase
             end
         end
 
-        function net = loadPretrained(~, fcnName, addonName)
-            % Load a pretrained network, with a readable error if the Add-On is missing
-            if exist(fcnName, 'file') == 0
-                error('PhotoLab:missingAddon', ...
-                    'Mreža %s nije dostupna.\nInstalirajte Add-On "%s" (Home > Add-Ons > Get Add-Ons).', ...
-                    fcnName, addonName);
-            end
-            try
-                net = feval(fcnName);
-            catch ME
-                error('PhotoLab:missingAddon', ...
-                    'Mreža %s nije dostupna.\nInstalirajte Add-On "%s" (Home > Add-Ons > Get Add-Ons).\n\n%s', ...
-                    fcnName, addonName, ME.message);
-            end
-        end
-
         function [layers, netInputSize, normalization] = getLayers(app, archName, inputSize, numClasses, normalization)
             % Returns the layers, the input size the network needs (the datastore
-            % is resized to it) and the normalization actually applied.
+            % is reconciled to it) and the normalization actually applied.
             inputNorm = getInputNormalization(app, normalization);
             switch archName
                 case "LeNet"
@@ -208,39 +173,6 @@ classdef TrainingCNN < matlab.apps.AppBase
                         fullyConnectedLayer(numClasses, 'Name', 'fc8')
                         softmaxLayer('Name', 'softmax')
                         classificationLayer('Name', 'output')];
-
-                case "ResNet-18"
-                    net = loadPretrained(app, 'resnet18', 'Deep Learning Toolbox Model for ResNet-18 Network');
-                    lgraph = layerGraph(net);
-                    lgraph = replaceLayer(lgraph, 'fc1000', fullyConnectedLayer(numClasses, ...
-                        'Name', 'fc_photolab', 'WeightLearnRateFactor', 10, 'BiasLearnRateFactor', 10));
-                    lgraph = replaceLayer(lgraph, 'ClassificationLayer_predictions', ...
-                        classificationLayer('Name', 'output'));
-                    layers = lgraph;
-                    netInputSize = net.Layers(1).InputSize;
-                    normalization = 'ImageNet';
-
-                case "MobileNet-v2"
-                    net = loadPretrained(app, 'mobilenetv2', 'Deep Learning Toolbox Model for MobileNet-v2 Network');
-                    lgraph = layerGraph(net);
-                    lgraph = replaceLayer(lgraph, 'Logits', fullyConnectedLayer(numClasses, ...
-                        'Name', 'fc_photolab', 'WeightLearnRateFactor', 10, 'BiasLearnRateFactor', 10));
-                    lgraph = replaceLayer(lgraph, 'ClassificationLayer_Logits', ...
-                        classificationLayer('Name', 'output'));
-                    layers = lgraph;
-                    netInputSize = net.Layers(1).InputSize;
-                    normalization = 'ImageNet';
-
-                case "SqueezeNet"
-                    net = loadPretrained(app, 'squeezenet', 'Deep Learning Toolbox Model for SqueezeNet Network');
-                    lgraph = layerGraph(net);
-                    lgraph = replaceLayer(lgraph, 'conv10', convolution2dLayer(1, numClasses, ...
-                        'Name', 'conv10_photolab', 'WeightLearnRateFactor', 10, 'BiasLearnRateFactor', 10));
-                    lgraph = replaceLayer(lgraph, 'ClassificationLayer_predictions', ...
-                        classificationLayer('Name', 'output'));
-                    layers = lgraph;
-                    netInputSize = net.Layers(1).InputSize;
-                    normalization = 'ImageNet';
 
                 otherwise
                     error('PhotoLab:unknownArchitecture', 'Arhitektura "%s" nije podržana.', archName);
@@ -465,11 +397,15 @@ classdef TrainingCNN < matlab.apps.AppBase
             accuracy = mean(preds == imdsTest.Labels);
             fprintf("Test Accuracy: %.2f%%\n", accuracy * 100);
 
-            % Save trained model with everything inference needs
+            % Save trained model with everything inference and evaluation need
             inputSize = netInputSize;
             architecture = app.Architecture;
+            yTrue = imdsTest.Labels;
+            yPred = preds;
+            testFiles = imdsTest.Files;
             save(savePath, 'net', 'accuracy', 'classNames', 'inputSize', ...
-                'normalization', 'architecture', 'datasetName');
+                'normalization', 'architecture', 'datasetName', ...
+                'yTrue', 'yPred', 'testFiles');
 
             result.accuracy = accuracy;
             if isfield(info, 'FinalValidationAccuracy') && ~isempty(info.FinalValidationAccuracy) ...
