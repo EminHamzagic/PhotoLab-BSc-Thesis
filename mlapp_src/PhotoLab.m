@@ -28,6 +28,7 @@ classdef PhotoLab < matlab.apps.AppBase
             addpath(fullfile(appDir, 'options_ui'));
             addpath(fullfile(appDir, 'scripts'));
             addpath(fullfile(appDir, 'metrics'));
+            addpath(fullfile(appDir, 'cnn_core'));
             addpath(fullfile(appDir, 'generative'));
             addpath(genpath(fullfile(appDir, 'utils')));
             savepath;
@@ -43,6 +44,7 @@ classdef PhotoLab < matlab.apps.AppBase
             addpath(fullfile(appDir, 'options_ui'));
             addpath(fullfile(appDir, 'scripts'));
             addpath(fullfile(appDir, 'metrics'));
+            addpath(fullfile(appDir, 'cnn_core'));
             addpath(fullfile(appDir, 'generative'));
             addpath(genpath(fullfile(appDir, 'utils')));
             savepath;

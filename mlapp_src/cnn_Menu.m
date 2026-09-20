@@ -44,7 +44,7 @@ classdef cnn_Menu < matlab.apps.AppBase
             movegui(app.UIFigure, 'center');
             % Helper folders next to this app, so it also works when opened directly
             appDir = fileparts(which('cnn_Menu'));
-            folders = {'cnn_ui', 'options_ui', 'scripts', 'metrics', 'utils', 'generative'};
+            folders = {'cnn_ui', 'options_ui', 'scripts', 'metrics', 'utils', 'generative', 'cnn_core'};
             for k = 1:numel(folders)
                 folder = fullfile(appDir, folders{k});
                 if isfolder(folder)
