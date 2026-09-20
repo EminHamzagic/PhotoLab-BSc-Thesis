@@ -34,7 +34,7 @@ package manager, and no test suite. Everything runs inside MATLAB.
 ## Running it
 
 Open MATLAB in the repo root and launch `PhotoLab.mlapp`. Both buttons on the main screen call
-`addpath` on `cnn_ui`, `options_ui`, `scripts`, `metrics`, `generative` and `utils`, then
+`addpath` on `cnn_ui`, `options_ui`, `scripts`, `metrics`, `generative`, `cnn_core` and `utils`, then
 `savepath`, so the helper folders only become visible after the app has been opened once.
 `cnn_Menu` also adds them in its `startupFcn` (without `savepath`), so it works when opened
 directly. If you call helper functions directly from the MATLAB console, add those paths yourself.
@@ -57,6 +57,8 @@ PhotoLab/
 ├── options_ui/               Child apps for classic image-processing operations.
 ├── cnn_ui/                   Child apps for the CNN and VAE workflows.
 ├── generative/               Plain .m functions of the VAE (networks, loss, training loop, generation, evaluation).
+├── cnn_core/                 Plain .m functions of the CNN training pipeline, shared by TrainingCNN and experiments/.
+├── experiments/              Unattended thesis experiment scripts (plan, runner, benchmark, VAE runs, figures).
 ├── mlapp_src/                Readable copies of the code embedded in every .mlapp except CNNIntroductionApp.
 ├── tools/                    Dev tooling: mlappFromSource.m rebuilds an .mlapp from mlapp_src/;
 │                             makeFilterDemoImages.m regenerates the two denoising demo PNGs.
@@ -163,7 +165,7 @@ style — keep that convention.
 | File | What it does |
 |---|---|
 | `CNNIntroductionApp.mlapp` | Static explanatory text + MathWorks hyperlinks. No logic. No `mlapp_src` copy. |
-| `CNNArchitectures.mlapp` | Table of the 2 architectures (LeNet, AlexNet) built from a struct array (`getArchitecturesData`). Selecting any cell in a row sets `choosenArch` from column 1. Only the name string is returned; it must match a `case` in `TrainingCNN.getLayers`. |
+| `CNNArchitectures.mlapp` | Table of the 2 architectures (LeNet, AlexNet) built from a struct array (`getArchitecturesData`). Selecting any cell in a row sets `choosenArch` from column 1. Only the name string is returned; it must match a `case` in `cnn_core/getLayers`. |
 | `DatasetManagerApp.mlapp` | MNIST / Fashion-MNIST / CIFAR-10 / CIFAR-100. Resize dropdown (`WxH` entries parsed with `sscanf`; `Custom` adds a new `WxH` entry), normalization dropdown (`None`/`MinMax`/`Mean-Std`), preview, real class counts (`countEachLabel`) once downloaded. One download path driven by `getDatasetConfig`. Returns `choosenDataset` (path to `datasets/<Name>_<W>x<H>`), `setDimensions` (`[H W C]`) and `setNormalization`. |
 | `TrainingCNN.mlapp` | Receives `(architecture, dataset, dimensions, normalization)` via `loadData`, builds layers, trains with a validation split, evaluates on `testing/`, saves (including the test predictions). Optional GPU. |
 | `ImageClassificationApp.mlapp` | Load a `.mat` model (finds `net` or any `SeriesNetwork`/`DAGNetwork`), one image or a folder (`imageDatastore`), classify everything in one `classify` call. Results `uitable`; selecting a row shows the image and a top-5 table. Class names come from the saved `classNames` / the output layer. |
@@ -173,8 +175,13 @@ style — keep that convention.
 
 ### Training flow (`TrainingCNN`)
 
+The whole pipeline lives in `cnn_core/` (next section); `TrainingCNN` only reads its controls into
+the parameter struct, calls `trainCNNModel` + `saveCNNModel` and shows the result. The experiment
+scripts call the same functions.
+
 `[layers, netInputSize, normalization] = getLayers(archName, inputSize, numClasses, normalization)`
-is a `switch` over the two supported architectures, both trained from scratch at the dataset size:
+(`cnn_core/getLayers.m`) is a `switch` over the two supported architectures, both trained from
+scratch at the dataset size:
 
 - `LeNet` (2 conv + 3 FC) and `AlexNet` (CIFAR-scale, 5 conv + 3 FC; the first conv strides for
   inputs larger than 64 px). The normalization choice is mapped onto `imageInputLayer`:
@@ -187,9 +194,10 @@ is a `switch` over the two supported architectures, both trained from scratch at
 Every datastore is wrapped in `augmentedImageDatastore(netInputSize, imds, 'ColorPreprocessing', ...)`,
 which reconciles on-disk size and channels with what the net needs. The dataset's size and channels
 come from `photolab_dataset.mat` if present. `metrics/evaluateModelOnTestSet` and
-`generative/evaluateWithClassifier` rebuild exactly this preprocessing — keep the three in step.
+`generative/evaluateWithClassifier` rebuild exactly this preprocessing (the master copy is
+`cnn_core/buildAugmentedDatastores`) — keep the three in step.
 
-`getTrainingOptions(p, validationData)` takes the struct from `collectParams` and supports `sgdm`
+`getTrainingOptions(p, validationData)` (`cnn_core/`) takes the struct from `collectParams` and supports `sgdm`
 (Momentum), `adam` (β1, β2, ε) and `rmsprop` (decay, ε). It errors on anything else. Every control
 in the window is read: validation split, `ValidationFrequency`, `ValidationPatience` (0 = off),
 `GradientThreshold` (0 = off), shuffle, plots, augmentation (flip + translation), and GPU
@@ -277,6 +285,53 @@ helpers use their own `RandStream`, never the global one.
 | `lossHistory` | struct with per-epoch vectors `total`, `recon`, `kl` |
 | `trainingTime` | seconds |
 | `sampleGrids` | `uint8` `H'×W'×C'×epochsCompleted`, the fixed-latent sample grid of every epoch |
+
+## `cnn_core/` — the shared CNN pipeline
+
+Plain functions lifted out of `TrainingCNN`, so the window and the experiment scripts run **exactly
+the same code** (a model from the script is "trained in PhotoLab"). Every training parameter travels
+in one struct `p` (see `defaultTrainingParams`; the field names are those of
+`TrainingCNN.collectParams`). Add the folder to the path (`PhotoLab.mlapp` and `cnn_Menu` do).
+
+| File | Role |
+|---|---|
+| `trainCNNModel.m` | `result = trainCNNModel(datasetPath, architecture, normalization, p, inputDimensions, progressFcn)`: split, layers, datastores, `trainNetwork`, evaluate on `testing/`. `progressFcn` gets a struct with `phase` (`'training'` / `'evaluating'`) and `message`, or `[]`. Times training and test evaluation separately (`trainingTime`, `testTime`). |
+| `saveCNNModel.m` | `saveCNNModel(file, result, extra)`: writes the classifier `.mat` fields documented below; every field of the optional struct `extra` is added (the runner adds `info`). |
+| `getLayers.m`, `getInputNormalization.m`, `getTrainingOptions.m` | Architectures (LeNet, AlexNet), normalization mapping, `trainingOptions` for sgdm / adam / rmsprop. |
+| `resolveDatasetPath.m`, `loadDatasetSplits.m`, `buildAugmentedDatastores.m` | Wrapper-folder descent, datastores + validation split, `augmentedImageDatastore` wrapping and augmentation. |
+| `evaluateOnTestSet.m`, `countLearnables.m` | `classify` on the test split (timed); learnable parameter count. |
+| `defaultTrainingParams.m` | The default `p`. |
+
+Three optional `p` fields exist for scripts and are never set by the window: `verbose` (MATLAB's
+console training log, default false), `subsetFraction` (< 1 keeps a stratified fraction of both
+`training/` and `testing/`; used by the benchmark) and `validationFrequency = 0` (validate once per
+epoch; the window's spinner cannot produce 0).
+
+## `experiments/` — thesis experiments
+
+Run from the repo root (any working directory works; the scripts resolve paths from their own
+location and add the helper folders themselves). Everything is CPU-only and unattended.
+
+| File | Role |
+|---|---|
+| `experimentPlan.m` | `plan = experimentPlan(includeCIFAR10, includeCIFAR10Aug)`: the editable plan as a table. Baseline: Adam, LR 1e-3, batch 128, 10 epochs, MinMax, no augmentation, native resolution, validation split 0.1, seed 42; every row overrides only what the plan lists (R01-R15; R16-R17 with `includeCIFAR10`, 20 epochs; R18 also needs `includeCIFAR10Aug`). |
+| `runExperiments.m` | Runs the plan (`'IncludeCIFAR10'`, `'IncludeCIFAR10Aug'`, `'Only'`, `'Plan'` options). Downloads missing datasets (`ensureDataset.m`, which calls `prepareX(dir, [], size)`), then per run `rng(seed)`, `trainCNNModel`, `experiments/models/<runId>.mat` (classifier fields + `info`, openable by `ImageClassificationApp` / `EvaluationMetricsApp`) and console log `experiments/logs/<runId>.log`. Appends one row to `experiments/results.csv` right after each run (`runId, experiment, architecture, dataset, inputSize, normalization, optimizer, learnRate, batchSize, epochs, augmentation, seed, finalValAccuracy, bestValAccuracy, testAccuracy, macroF1, trainTimeSec, testTimeSec, numLearnables, modelFile, status, errorMessage, timestamp`; accuracies are fractions in [0, 1]). **Resume:** runIds with status `ok` and an existing model file are skipped; failed runs are logged as `error` and retried on the next call (older error rows stay in the CSV). Experiment runs validate once per epoch with early stopping off, so every row runs its full epoch count. |
+| `planRowToParams.m` | One plan row to the `p` struct for `trainCNNModel`. |
+| `benchmarkPlan.m` | Trains every distinct (architecture, dataset, size, augmentation) combination for 1 epoch on 5 % and 10 % stratified subsets, fits `time = overhead + epochs x per-epoch` and prints an estimate per run and in total. Run it first to choose what to leave running overnight. |
+| `runGenerativeExperiments.m` | VAE runs G01-G04 (MNIST / FashionMNIST x latentDim 2 / 16, 20 epochs, beta 1, 10 000 images) with `trainGenerativeModel`; models in `experiments/generative/`, rows in `experiments/generative_results.csv`. If `experiments/models/R01.mat` / `R02.mat` exist, also mean confidence, class histogram and simplified Inception Score on 1000 generated images. Same resume / log behaviour. |
+| `makeFigures.m` | Reads both CSVs and writes the thesis PNGs to `experiments/figures/` (accuracy per architecture x dataset, accuracy vs time, optimizer/LR, normalization, augmentation, resolution, best-model confusion matrix per dataset, VAE losses). Figures whose runs are missing are skipped. |
+
+```matlab
+addpath experiments
+benchmarkPlan                       % how long will it take?
+runExperiments                      % R01-R15; runExperiments('IncludeCIFAR10', true) adds R16-R17
+runGenerativeExperiments            % run after R01/R02 so the classifier columns are filled
+makeFigures
+```
+
+Unattended from a terminal: `matlab -batch "addpath experiments; runExperiments"`. Models, logs,
+CSVs and the VAE folder are gitignored; `experiments/figures/` is tracked. Delete
+`experiments/results.csv` (and the model) to force a run to be repeated.
 
 ## `scripts/` — dataset preparation
 
@@ -395,4 +450,5 @@ Be aware of these; don't assume they are intentional, but don't fix them as driv
 Feature branches merged into `main` via PRs, named `feature/<topic>` or `fix/<topic>`
 (e.g. `feature/generative-models`, `fix/cleanup`). Commit messages are short and imperative.
 `datasets/` is gitignored; do not commit downloaded data or trained `.mat` models (classifier or VAE)
-— past commits had to remove MNIST images from history.
+— past commits had to remove MNIST images from history. The same goes for `experiments/models/`,
+`experiments/generative/`, `experiments/logs/` and the two experiment CSVs (all gitignored).
