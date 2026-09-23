@@ -133,7 +133,7 @@ function figAccuracyVsTime(T, figDir)
     text(ax, T.trainTimeSec, T.testAccuracy * 100, "  " + T.runId, 'FontSize', 8);
     hold(ax, 'off');
     set(ax, 'XScale', 'log');
-    xlabel(ax, 'Vrijeme treniranja (s, log skala)');
+    xlabel(ax, 'Vreme treniranja (s, log skala)');
     setAccuracyAxis(ax, T.testAccuracy * 100);
     legend(ax, archs, 'Location', 'southeast');
     title(ax, 'Tačnost naspram vremena treniranja');
@@ -221,9 +221,9 @@ function figResolution(T, figDir)
     plot(ax2, S.width, S.trainTimeSec, '-o', 'LineWidth', 1.5, 'MarkerFaceColor', 'auto');
     xticks(ax2, S.width);
     xlabel(ax2, 'Rezolucija (piksela po strani)');
-    ylabel(ax2, 'Vrijeme treniranja (s)');
+    ylabel(ax2, 'Vreme treniranja (s)');
     grid(ax2, 'on'); box(ax2, 'off');
-    title(ax2, 'Rezolucija i vrijeme treniranja');
+    title(ax2, 'Rezolucija i vreme treniranja');
     saveFigure(fig, fullfile(figDir, 'fig_e2_resolution.png'));
 end
 
