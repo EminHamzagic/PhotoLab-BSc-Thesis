@@ -47,7 +47,13 @@ classdef Options < matlab.apps.AppBase
 
             filename = strcat(pathname, filename);
             app.ImageFile=imread(filename);
-            app.Image.ImageSource = app.ImageFile;
+
+            % uiimage traži RGB, pa crno-belu (2D) sliku prikaži replicirano po 3 kanala
+            if ismatrix(app.ImageFile)
+                app.Image.ImageSource = repmat(app.ImageFile, [1 1 3]);
+            else
+                app.Image.ImageSource = app.ImageFile;
+            end
             app.ImageLoaded = true;
 
             figure(app.UIFigure);

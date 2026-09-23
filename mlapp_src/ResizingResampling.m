@@ -17,6 +17,7 @@ classdef ResizingResampling < matlab.apps.AppBase
         ScaleFactorEditField              matlab.ui.control.NumericEditField
         ResultSectionLabel                matlab.ui.control.Label
         SizeValueLabel                    matlab.ui.control.Label
+        PreuzmipromenjenuslikuButton      matlab.ui.control.Button
         ApplyResizeButton                 matlab.ui.control.Button
         OriginalPanel                     matlab.ui.container.Panel
         Original                          matlab.ui.control.Image
@@ -87,6 +88,23 @@ classdef ResizingResampling < matlab.apps.AppBase
             end
             app.Resized.ImageSource = resizedImage;
             app.SizeValueLabel.Text = sprintf('%d x %d', newWidth, newHeight);
+        end
+
+        % Button pushed function: PreuzmipromenjenuslikuButton
+        function PreuzmipromenjenuslikuButtonPushed(app, event)
+            if isempty(app.Resized.ImageSource) || ~isnumeric(app.Resized.ImageSource)
+                uialert(app.UIFigure, 'Morate prvo primeniti promenu veličine!', 'Warning');
+                return;
+            end
+
+            [filename, pathname] = uiputfile({'*.png';'*.jpg';'*.tif'}, 'Save Image As');
+            if isequal(filename, 0)
+                disp('User canceled save.');
+            else
+                fullFileName = fullfile(pathname, filename);
+                imwrite(im2uint8(app.Resized.ImageSource), fullFileName);
+                disp(['Image saved to ', fullFileName]);
+            end
         end
     end
 
@@ -187,6 +205,13 @@ classdef ResizingResampling < matlab.apps.AppBase
             app.SizeValueLabel.FontColor = [0.18 0.55 0.34];
             app.SizeValueLabel.Position = [16 288 340 32];
             app.SizeValueLabel.Text = '—';
+
+            % Create PreuzmipromenjenuslikuButton
+            app.PreuzmipromenjenuslikuButton = uibutton(app.ControlsPanel, 'push');
+            app.PreuzmipromenjenuslikuButton.ButtonPushedFcn = createCallbackFcn(app, @PreuzmipromenjenuslikuButtonPushed, true);
+            app.PreuzmipromenjenuslikuButton.FontSize = 12;
+            app.PreuzmipromenjenuslikuButton.Position = [196 72 160 36];
+            app.PreuzmipromenjenuslikuButton.Text = 'Preuzmi sliku';
 
             % Create ApplyResizeButton
             app.ApplyResizeButton = uibutton(app.ControlsPanel, 'push');

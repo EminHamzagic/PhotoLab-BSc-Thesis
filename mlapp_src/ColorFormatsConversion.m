@@ -45,34 +45,32 @@ classdef ColorFormatsConversion < matlab.apps.AppBase
         % Button pushed function: HSLButton
         function HSLButtonPushed(app, event)
             hsvImage = rgb2hsv(app.LoadedImage);
-            app.Converted.ImageSource = hsvImage;
+            app.Converted.ImageSource = im2uint8(hsvImage);
         end
 
         % Button pushed function: CIELabButton
         function CIELabButtonPushed(app, event)
             labImage = rgb2lab(app.LoadedImage);
-            app.Converted.ImageSource = labImage;
+            app.Converted.ImageSource = im2uint8(mat2gray(labImage));
         end
 
         % Button pushed function: YCbCrButton
         function YCbCrButtonPushed(app, event)
             ycbcrImage = rgb2ycbcr(app.LoadedImage);
-            app.Converted.ImageSource = ycbcrImage;
+            app.Converted.ImageSource = im2uint8(ycbcrImage);
         end
 
         % Button pushed function: PreuzmikonvertovanuslikuButton
         function PreuzmikonvertovanuslikuButtonPushed(app, event)
             if ~isempty(app.Converted.ImageSource) && isnumeric(app.Converted.ImageSource)
-                rgbImage = lab2rgb(app.Converted.ImageSource);
-
-                rgbImageUint8 = im2uint8(rgbImage);
+                imageToSave = im2uint8(app.Converted.ImageSource);
 
                 [filename, pathname] = uiputfile({'*.png';'*.jpg';'*.tif'}, 'Save Image As');
                 if isequal(filename,0)
                     disp('User canceled save.');
                 else
                     fullFileName = fullfile(pathname, filename);
-                    imwrite(rgbImageUint8, fullFileName);
+                    imwrite(imageToSave, fullFileName);
                     disp(['Image saved to ', fullFileName]);
                 end
             else

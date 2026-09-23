@@ -10,6 +10,7 @@ classdef WienerFilter < matlab.apps.AppBase
         PSFEditField         matlab.ui.control.EditField
         SNREditField_2Label  matlab.ui.control.Label
         SNREditField         matlab.ui.control.NumericEditField
+        PreuzmiSlikuButton   matlab.ui.control.Button
         ApplyFilterButton    matlab.ui.control.Button
         OriginalPanel        matlab.ui.container.Panel
         Original             matlab.ui.control.Image
@@ -19,13 +20,19 @@ classdef WienerFilter < matlab.apps.AppBase
 
     properties (Access = private)
         LoadedImage % Slika prosleđena iz Options prozora
+        FilteredImageData % Poslednja izračunata filtrirana slika (za preuzimanje)
     end
 
     methods (Access = public)
 
         function loadImage(app, image)
             app.LoadedImage = image;
-            app.Original.ImageSource = image;
+            % uiimage traži RGB, pa 2D sliku prikaži replicirano po 3 kanala
+            if ismatrix(image) && size(image, 3) == 1
+                app.Original.ImageSource = repmat(image, [1 1 3]);
+            else
+                app.Original.ImageSource = image;
+            end
         end
     end
 
@@ -54,6 +61,9 @@ classdef WienerFilter < matlab.apps.AppBase
                 grayImage = originalImage;
             end
 
+            % Prevedi sliku u double opseg [0, 1] pre dekonvolucije
+            grayImage = im2double(grayImage);
+
             % Parsiraj PSF vrednost iz unosa kao tekst
             psfText = app.PSFEditField.Value;  % Tekstualni unos PSF-a
             psfMatrix = str2num(psfText);  % Parsiranje teksta u matricu
@@ -63,6 +73,14 @@ classdef WienerFilter < matlab.apps.AppBase
                 uialert(app.UIFigure, 'PSF format nije ispravan. Unesite matricu u formatu: [0 1 0; 1 1 1; 0 1 0]', 'Greška');
                 return;
             end
+
+            % Normalizuj PSF da mu suma bude 1 (energija se ne menja)
+            psfSum = sum(psfMatrix(:));
+            if psfSum <= 0
+                uialert(app.UIFigure, 'Suma PSF matrice mora biti pozitivna.', 'Greška');
+                return;
+            end
+            psfMatrix = psfMatrix / psfSum;
 
             % Prikazivanje PSF matrice u komandnom prozoru radi provere
             disp('PSF Matriza:');
@@ -75,12 +93,15 @@ classdef WienerFilter < matlab.apps.AppBase
                 return;
             end
 
-            % Primeni dekonvoluciju sa Wiener filterom koristeći PSF i SNR
-            deconvolvedImage = deconvwnr(grayImage, psfMatrix, snrValue);
+            % Ublaži ivične artefakte pre dekonvolucije
+            grayImage = edgetaper(grayImage, psfMatrix);
 
-            % Normalizuj dekonvoluciju na opseg [0, 255]
-            deconvolvedImage = mat2gray(deconvolvedImage);  % Normalizuje sliku na [0, 1]
-            deconvolvedImage = uint8(deconvolvedImage * 255);  % Skalira vrednosti na [0, 255]
+            % Primeni dekonvoluciju sa Wiener filterom (deconvwnr očekuje NSR = 1/SNR)
+            nsrValue = 1 / snrValue;
+            deconvolvedImage = deconvwnr(grayImage, psfMatrix, nsrValue);
+
+            % Prevedi rezultat u uint8 sa odsecanjem (bez razvlačenja kontrasta)
+            deconvolvedImage = im2uint8(deconvolvedImage);
 
             % Proveri da li je slika pravilno generisana
             if all(deconvolvedImage(:) == 0)
@@ -90,6 +111,26 @@ classdef WienerFilter < matlab.apps.AppBase
 
             % Prikaz filtrirane slike (uiimage traži 3-kanalnu sliku)
             app.FilteredImage.ImageSource = repmat(deconvolvedImage, [1 1 3]);
+
+            % Sačuvaj rezultat radi kasnijeg preuzimanja
+            app.FilteredImageData = deconvolvedImage;
+        end
+
+        % Button pushed function: PreuzmiSlikuButton
+        function PreuzmiSlikuButtonPushed(app, event)
+            if isempty(app.FilteredImageData)
+                uialert(app.UIFigure, 'Morate prvo primeniti filter!', 'Warning');
+                return;
+            end
+
+            [filename, pathname] = uiputfile({'*.png';'*.jpg';'*.tif'}, 'Save Image As');
+            if isequal(filename, 0)
+                disp('User canceled save.');
+            else
+                fullFileName = fullfile(pathname, filename);
+                imwrite(app.FilteredImageData, fullFileName);
+                disp(['Image saved to ', fullFileName]);
+            end
         end
     end
 
@@ -146,7 +187,14 @@ classdef WienerFilter < matlab.apps.AppBase
             app.SNREditField = uieditfield(app.ControlsPanel, 'numeric');
             app.SNREditField.FontSize = 12;
             app.SNREditField.Position = [150 476 100 24];
-            app.SNREditField.Value = 0.01;
+            app.SNREditField.Value = 100;
+
+            % Create PreuzmiSlikuButton
+            app.PreuzmiSlikuButton = uibutton(app.ControlsPanel, 'push');
+            app.PreuzmiSlikuButton.ButtonPushedFcn = createCallbackFcn(app, @PreuzmiSlikuButtonPushed, true);
+            app.PreuzmiSlikuButton.FontSize = 12;
+            app.PreuzmiSlikuButton.Position = [196 72 160 36];
+            app.PreuzmiSlikuButton.Text = 'Preuzmi sliku';
 
             % Create ApplyFilterButton
             app.ApplyFilterButton = uibutton(app.ControlsPanel, 'push');

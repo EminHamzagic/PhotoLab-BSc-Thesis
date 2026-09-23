@@ -129,6 +129,13 @@ classdef Filters < matlab.apps.AppBase
             movegui(app.UIFigure, 'center');
         end
 
+        % Value changed function: OdaberitejainuumaSlider
+        function OdaberitejainuumaSliderValueChanged(app, event)
+            if strcmp(app.NoiseTypeDropDown.Value, 'Gaussian')
+                app.SigmaEditField.Value = app.OdaberitejainuumaSlider.Value * 5;
+            end
+        end
+
         % Button pushed function: AddNoiseButton
         function AddNoiseButtonPushed(app, event)
             if isempty(app.LoadedImage)
@@ -138,10 +145,9 @@ classdef Filters < matlab.apps.AppBase
             strength = app.OdaberitejainuumaSlider.Value;
             switch app.NoiseTypeDropDown.Value
                 case 'Gaussian'
-                    sigma = strength * 5;
+                    sigma = app.SigmaEditField.Value;
                     app.NoisyData = addGaussianNoise(app.LoadedImage, sigma);
                     app.NoiseType = 'gaussian';
-                    app.SigmaEditField.Value = sigma;
                 case 'Salt & Pepper'
                     app.NoisyData = imnoise(app.LoadedImage, 'salt & pepper', strength / 10);
                     app.NoiseType = 'saltpepper';
@@ -223,6 +229,7 @@ classdef Filters < matlab.apps.AppBase
             app.OdaberitejainuumaSlider = uislider(app.NoisePanel);
             app.OdaberitejainuumaSlider.Limits = [0 10];
             app.OdaberitejainuumaSlider.MajorTicks = [0 5 10];
+            app.OdaberitejainuumaSlider.ValueChangedFcn = createCallbackFcn(app, @OdaberitejainuumaSliderValueChanged, true);
             app.OdaberitejainuumaSlider.FontSize = 12;
             app.OdaberitejainuumaSlider.Position = [140 116 190 3];
             app.OdaberitejainuumaSlider.Value = 5;
