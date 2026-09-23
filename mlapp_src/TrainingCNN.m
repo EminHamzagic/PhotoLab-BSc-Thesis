@@ -94,127 +94,6 @@ classdef TrainingCNN < matlab.apps.AppBase
 
     methods (Access = private)
 
-        function layerNorm = getInputNormalization(~, normalization)
-            % Map the DatasetManagerApp choice to imageInputLayer 'Normalization'
-            switch normalization
-                case 'MinMax'
-                    layerNorm = 'rescale-zero-one';
-                case 'Mean-Std'
-                    layerNorm = 'zscore';
-                otherwise
-                    layerNorm = 'none';
-            end
-        end
-
-        function [layers, netInputSize, normalization] = getLayers(app, archName, inputSize, numClasses, normalization)
-            % Returns the layers, the input size the network needs (the datastore
-            % is reconciled to it) and the normalization actually applied.
-            inputNorm = getInputNormalization(app, normalization);
-            switch archName
-                case "LeNet"
-                    netInputSize = inputSize;
-                    layers = [
-                        imageInputLayer(inputSize, 'Normalization', inputNorm)
-
-                        convolution2dLayer(5, 6, 'Padding', 'same')
-                        batchNormalizationLayer
-                        reluLayer
-                        averagePooling2dLayer(2, 'Stride', 2)
-
-                        convolution2dLayer(5, 16, 'Padding', 'same')
-                        batchNormalizationLayer
-                        reluLayer
-                        averagePooling2dLayer(2, 'Stride', 2)
-
-                        fullyConnectedLayer(120)
-                        reluLayer
-                        fullyConnectedLayer(84)
-                        reluLayer
-                        fullyConnectedLayer(numClasses)
-                        softmaxLayer
-                        classificationLayer];
-
-                case "AlexNet"
-                    % AlexNet scaled for 28x28 / 32x32 inputs: 5 conv + 3 FC.
-                    % For larger inputs the first conv strides so the feature
-                    % maps reaching the FC layers stay CIFAR-sized.
-                    netInputSize = inputSize;
-                    stemStride = max(1, round(inputSize(1) / 32));
-                    layers = [
-                        imageInputLayer(inputSize, 'Normalization', inputNorm, 'Name', 'input')
-
-                        convolution2dLayer(5, 64, 'Stride', stemStride, 'Padding', 'same', 'Name', 'conv1')
-                        batchNormalizationLayer('Name', 'bn1')
-                        reluLayer('Name', 'relu1')
-                        maxPooling2dLayer(2, 'Stride', 2, 'Name', 'pool1')
-
-                        convolution2dLayer(5, 192, 'Padding', 'same', 'Name', 'conv2')
-                        batchNormalizationLayer('Name', 'bn2')
-                        reluLayer('Name', 'relu2')
-                        maxPooling2dLayer(2, 'Stride', 2, 'Name', 'pool2')
-
-                        convolution2dLayer(3, 384, 'Padding', 'same', 'Name', 'conv3')
-                        batchNormalizationLayer('Name', 'bn3')
-                        reluLayer('Name', 'relu3')
-                        convolution2dLayer(3, 256, 'Padding', 'same', 'Name', 'conv4')
-                        batchNormalizationLayer('Name', 'bn4')
-                        reluLayer('Name', 'relu4')
-                        convolution2dLayer(3, 256, 'Padding', 'same', 'Name', 'conv5')
-                        batchNormalizationLayer('Name', 'bn5')
-                        reluLayer('Name', 'relu5')
-                        maxPooling2dLayer(2, 'Stride', 2, 'Name', 'pool5')
-
-                        fullyConnectedLayer(1024, 'Name', 'fc6')
-                        reluLayer('Name', 'relu6')
-                        dropoutLayer(0.5, 'Name', 'drop6')
-                        fullyConnectedLayer(512, 'Name', 'fc7')
-                        reluLayer('Name', 'relu7')
-                        dropoutLayer(0.5, 'Name', 'drop7')
-                        fullyConnectedLayer(numClasses, 'Name', 'fc8')
-                        softmaxLayer('Name', 'softmax')
-                        classificationLayer('Name', 'output')];
-
-                otherwise
-                    error('PhotoLab:unknownArchitecture', 'Arhitektura "%s" nije podržana.', archName);
-            end
-        end
-
-        function options = getTrainingOptions(~, p, validationData)
-            common = {
-                'InitialLearnRate', p.lr, ...
-                'MaxEpochs', p.epochs, ...
-                'MiniBatchSize', p.batchSize, ...
-                'L2Regularization', p.weightDecay, ...
-                'GradientThreshold', p.gradientThreshold, ...
-                'Shuffle', p.shuffle, ...
-                'Verbose', false, ...
-                'Plots', p.plots, ...
-                'ExecutionEnvironment', p.executionEnvironment};
-            if ~isempty(validationData)
-                common = [common, {
-                    'ValidationData', validationData, ...
-                    'ValidationFrequency', p.validationFrequency, ...
-                    'ValidationPatience', p.validationPatience}];
-            end
-
-            switch p.optimizer
-                case 'sgdm'
-                    options = trainingOptions('sgdm', common{:}, ...
-                        'Momentum', p.momentum);
-                case 'adam'
-                    options = trainingOptions('adam', common{:}, ...
-                        'GradientDecayFactor', p.beta1, ...
-                        'SquaredGradientDecayFactor', p.beta2, ...
-                        'Epsilon', p.epsilon);
-                case 'rmsprop'
-                    options = trainingOptions('rmsprop', common{:}, ...
-                        'SquaredGradientDecayFactor', p.rmsDecay, ...
-                        'Epsilon', p.epsilon);
-                otherwise
-                    error('Unsupported optimizer: %s', p.optimizer);
-            end
-        end
-
         function p = collectParams(app)
             % Read every training control into one struct
             p.lr = app.LearningRateEditField.Value;
@@ -310,110 +189,20 @@ classdef TrainingCNN < matlab.apps.AppBase
             drawnow;
         end
 
+        function onTrainingProgress(app, info)
+            % Status line update from cnn_core/trainCNNModel; the callback has already
+            % set the richer "Treniranje u toku (...)" text, so only evaluation is shown
+            if strcmp(info.phase, 'evaluating')
+                setBusy(app, true, info.message);
+            end
+        end
+
         function result = trainAndSaveCNN(app, p, savePath)
-            % Local copy: descending into a wrapper folder must not change app.DatasetPath
-            datasetPath = app.DatasetPath;
-            subDirs = dir(datasetPath);
-            subDirs = subDirs([subDirs.isdir] & ~startsWith({subDirs.name}, '.'));
-            hasTrain = any(strcmpi({subDirs.name}, 'training'));
-            hasTest  = any(strcmpi({subDirs.name}, 'testing'));
-            if ~(hasTrain && hasTest) && numel(subDirs) == 1
-                datasetPath = fullfile(datasetPath, subDirs(1).name);
-            end
-
-            imdsAll = imageDatastore(fullfile(datasetPath, 'training'), ...
-                'IncludeSubfolders', true, ...
-                'LabelSource', 'foldernames');
-            imdsTest = imageDatastore(fullfile(datasetPath, 'testing'), ...
-                'IncludeSubfolders', true, ...
-                'LabelSource', 'foldernames');
-
-            classNames = string(categories(imdsAll.Labels));
-            numClasses = numel(classNames);
-
-            % Size/channels of the data on disk: manifest first, then the parent's choice, then a sample
-            manifestFile = fullfile(datasetPath, 'photolab_dataset.mat');
-            [~, datasetName] = fileparts(datasetPath);
-            if isfile(manifestFile)
-                manifest = load(manifestFile);
-                dataSize = [manifest.imageSize manifest.channels];
-            elseif numel(app.InputDimensions) == 3
-                dataSize = app.InputDimensions;
-            else
-                sample = imread(imdsAll.Files{1});
-                dataSize = [size(sample, 1) size(sample, 2) size(sample, 3)];
-            end
-
-            % Validation split
-            if p.validationFraction > 0
-                [imdsTrain, imdsVal] = splitEachLabel(imdsAll, 1 - p.validationFraction, 'randomized');
-            else
-                imdsTrain = imdsAll;
-                imdsVal = [];
-            end
-
-            [layers, netInputSize, normalization] = getLayers(app, app.Architecture, dataSize, numClasses, app.Normalization);
-
-            % Reconcile disk data with what the network needs (size and channels)
-            if netInputSize(3) == 3 && dataSize(3) == 1
-                colorPrep = 'gray2rgb';
-            elseif netInputSize(3) == 1 && dataSize(3) == 3
-                colorPrep = 'rgb2gray';
-            else
-                colorPrep = 'none';
-            end
-
-            if p.augment
-                shift = max(1, round(netInputSize(1) / 16));
-                augmenter = imageDataAugmenter( ...
-                    'RandXReflection', true, ...
-                    'RandXTranslation', [-shift shift], ...
-                    'RandYTranslation', [-shift shift]);
-                augTrain = augmentedImageDatastore(netInputSize(1:2), imdsTrain, ...
-                    'ColorPreprocessing', colorPrep, 'DataAugmentation', augmenter);
-            else
-                augTrain = augmentedImageDatastore(netInputSize(1:2), imdsTrain, ...
-                    'ColorPreprocessing', colorPrep);
-            end
-            if isempty(imdsVal)
-                augVal = [];
-            else
-                augVal = augmentedImageDatastore(netInputSize(1:2), imdsVal, ...
-                    'ColorPreprocessing', colorPrep);
-            end
-            augTest = augmentedImageDatastore(netInputSize(1:2), imdsTest, ...
-                'ColorPreprocessing', colorPrep);
-
-            options = getTrainingOptions(app, p, augVal);
-
-            trainTimer = tic;
-            [net, info] = trainNetwork(augTrain, layers, options);
-            result.trainingTime = toc(trainTimer);
-
-            % Evaluate on the held-out test split
-            setBusy(app, true, 'Evaluacija na test skupu...');
-            preds = classify(net, augTest, 'MiniBatchSize', p.batchSize, ...
-                'ExecutionEnvironment', p.executionEnvironment);
-            accuracy = mean(preds == imdsTest.Labels);
-            fprintf("Test Accuracy: %.2f%%\n", accuracy * 100);
-
-            % Save trained model with everything inference and evaluation need
-            inputSize = netInputSize;
-            architecture = app.Architecture;
-            yTrue = imdsTest.Labels;
-            yPred = preds;
-            testFiles = imdsTest.Files;
-            save(savePath, 'net', 'accuracy', 'classNames', 'inputSize', ...
-                'normalization', 'architecture', 'datasetName', ...
-                'yTrue', 'yPred', 'testFiles');
-
-            result.accuracy = accuracy;
-            if isfield(info, 'FinalValidationAccuracy') && ~isempty(info.FinalValidationAccuracy) ...
-                    && ~isnan(info.FinalValidationAccuracy)
-                result.validationAccuracy = info.FinalValidationAccuracy / 100;
-            else
-                result.validationAccuracy = NaN;
-            end
+            % The pipeline itself lives in cnn_core/, shared with experiments/
+            result = trainCNNModel(app.DatasetPath, app.Architecture, app.Normalization, ...
+                p, app.InputDimensions, @(info) onTrainingProgress(app, info));
+            fprintf("Test Accuracy: %.2f%%\n", result.accuracy * 100);
+            saveCNNModel(savePath, result);
         end
 
     end

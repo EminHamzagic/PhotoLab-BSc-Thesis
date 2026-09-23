@@ -1,2 +1,8 @@
 datasets/
 .DS_Store
+experiments/models/
+experiments/generative/
+experiments/figures/
+experiments/logs/
+experiments/results.csv
+experiments/generative_results.csv
